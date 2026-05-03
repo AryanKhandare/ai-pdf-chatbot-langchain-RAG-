@@ -45,7 +45,7 @@ This template is also an accompanying example to the book [Learning LangChain (O
 ---
 
 ## Architecture Overview
-```
+
 <img width="1691" height="930" alt="RAG PDF reader diagram" src="https://github.com/user-attachments/assets/422a2add-7a9a-4c30-a941-8f7a69c46c35" />
 
 - **Supabase** is used as the vector store to store and retrieve relevant documents at query time.  
