@@ -51,3 +51,19 @@ llm_context/
 test_docs
 
 .swc
+
+# Testing and Scratches
+backend/chat-output.txt
+backend/check-db.ts
+backend/start-api.mjs
+backend/test-chat.ts
+backend/test-gemini-models.js
+backend/test-gemini.mjs
+backend/test-import.mjs
+backend/test-ingest.mjs
+backend/test-ingest.ts
+backend/test-output.txt
+backend/test.ts
+test-embedding.js
+test-openai.js
+package-lock.json

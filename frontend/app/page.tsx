@@ -10,6 +10,7 @@ import { Paperclip, ArrowUp, Loader2 } from 'lucide-react';
 import { ExamplePrompts } from '@/components/example-prompts';
 import { ChatMessage } from '@/components/chat-message';
 import { FilePreview } from '@/components/file-preview';
+import DarkVeil from '@/components/dark-veil';
 import { client } from '@/lib/langgraph-client';
 import {
   AgentState,
@@ -39,24 +40,9 @@ export default function Home() {
 
   useEffect(() => {
     // Create a thread when the component mounts
-    const initThread = async () => {
-      // Skip if we already have a thread
+    const initThread = () => {
       if (threadId) return;
-
-      try {
-        const thread = await client.createThread();
-
-        setThreadId(thread.thread_id);
-      } catch (error) {
-        console.error('Error creating thread:', error);
-        toast({
-          title: 'Error',
-          description:
-            'Error creating thread. Please make sure you have set the LANGGRAPH_API_URL environment variable correctly. ' +
-            error,
-          variant: 'destructive',
-        });
-      }
+      setThreadId(crypto.randomUUID());
     };
     initThread();
   }, []);
@@ -88,6 +74,8 @@ export default function Home() {
     lastRetrievedDocsRef.current = []; // Clear the last retrieved documents
 
     try {
+      const currentMessages = [...messages, { role: 'user', content: userMessage }];
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -95,6 +83,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           message: userMessage,
+          messages: currentMessages,
           threadId,
         }),
         signal: abortController.signal,
@@ -158,22 +147,29 @@ export default function Home() {
               }
             }
           } else if (event === 'updates' && data) {
-            if (
-              data &&
-              typeof data === 'object' &&
-              'retrieveDocuments' in data &&
-              data.retrieveDocuments &&
-              Array.isArray(data.retrieveDocuments.documents)
-            ) {
-              const retrievedDocs = (data as RetrieveDocumentsNodeUpdates)
-                .retrieveDocuments.documents as PDFDocument[];
+            // Find any node update that contains a 'documents' array
+            const nodeUpdate = Object.values(data).find(
+              (v: any) => v && typeof v === 'object' && Array.isArray(v.documents)
+            ) as any;
 
-              // // Handle documents here
+            if (nodeUpdate && Array.isArray(nodeUpdate.documents)) {
+              const retrievedDocs = nodeUpdate.documents as PDFDocument[];
+
+              // Handle documents here
               lastRetrievedDocsRef.current = retrievedDocs;
               console.log('Retrieved documents:', retrievedDocs);
-            } else {
-              // Clear the last retrieved documents if it's a direct answer
-              lastRetrievedDocsRef.current = [];
+
+              // Update the current assistant message with sources immediately
+              setMessages((prev) => {
+                const newArr = [...prev];
+                if (
+                  newArr.length > 0 &&
+                  newArr[newArr.length - 1].role === 'assistant'
+                ) {
+                  newArr[newArr.length - 1].sources = retrievedDocs;
+                }
+                return newArr;
+              });
             }
           } else {
             console.log('Unknown SSE event:', event, data);
@@ -267,50 +263,63 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-4 md:p-24 max-w-5xl mx-auto w-full">
-      {messages.length === 0 ? (
-        <>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="font-medium text-muted-foreground max-w-md mx-auto">
-                This ai chatbot is an example template to accompany the book:{' '}
-                <a
-                  href="https://www.oreilly.com/library/view/learning-langchain/9781098167271/"
-                  className="underline hover:text-foreground"
-                >
-                  Learning LangChain (O'Reilly): Building AI and LLM
-                  applications with LangChain and LangGraph
-                </a>
+    <main className="relative flex min-h-screen flex-col items-center selection:bg-primary/20">
+      {/* Background Animation */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.7] z-[-1]">
+        <DarkVeil
+          hueShift={280}
+          noiseIntensity={0.05}
+          scanlineIntensity={0.1}
+          speed={0.3}
+          scanlineFrequency={1}
+          warpAmount={0.3}
+        />
+      </div>
+
+      {/* Chat Area */}
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 pt-12 pb-32">
+        {messages.length === 0 ? (
+          <div className="h-[60vh] flex flex-col items-center justify-center space-y-8 animate-in fade-in zoom-in duration-700">
+            <div className="text-center space-y-3">
+              <h2 className="text-4xl font-black tracking-tighter bg-gradient-to-b from-foreground to-foreground/50 bg-clip-text text-transparent">
+                How can I help you <br />with your documents?
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-[400px] mx-auto leading-relaxed">
+                Upload your research papers, reports, or assignments to start an intelligent conversation.
               </p>
             </div>
-          </div>
-          <ExamplePrompts onPromptSelect={setInput} />
-        </>
-      ) : (
-        <div className="w-full space-y-4 mb-20">
-          {messages.map((message, i) => (
-            <ChatMessage key={i} message={message} />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
-
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background">
-        <div className="max-w-5xl mx-auto space-y-4">
-          {files.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
-              {files.map((file, index) => (
-                <FilePreview
-                  key={`${file.name}-${index}`}
-                  file={file}
-                  onRemove={() => handleRemoveFile(file)}
-                />
-              ))}
+            
+            <div className="w-full max-w-xl mx-auto">
+              <ExamplePrompts onPromptSelect={setInput} />
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {messages.map((message, i) => (
+              <ChatMessage key={i} message={message} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
 
-          <form onSubmit={handleSubmit} className="relative">
-            <div className="flex gap-2 border rounded-md overflow-hidden bg-gray-50">
+      {/* Floating Input Area */}
+      <div className="fixed bottom-8 left-0 right-0 px-4 pointer-events-none">
+        <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+          <div className="glass-card rounded-[2rem] p-2 pr-3 flex flex-col gap-2 shadow-2xl transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20">
+            {files.length > 0 && (
+              <div className="flex gap-2 p-2 overflow-x-auto no-scrollbar border-b border-white/5 pb-3">
+                {files.map((file, index) => (
+                  <FilePreview
+                    key={`${file.name}-${index}`}
+                    file={file}
+                    onRemove={() => handleRemoveFile(file)}
+                  />
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -323,34 +332,26 @@ export default function Home() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="rounded-none h-12"
+                className="rounded-full h-11 w-11 hover:bg-white/10 shrink-0"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
-                {isUploading ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                ) : (
-                  <Paperclip className="h-4 w-4" />
-                )}
+                <Paperclip className="h-5 w-5 opacity-60" />
               </Button>
+              
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={
-                  isUploading ? 'Uploading PDF...' : 'Send a message...'
-                }
-                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-12 bg-transparent"
+                placeholder={isUploading ? 'Uploading and indexing...' : 'Ask anything about your documents...'}
+                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-11 bg-transparent text-sm"
                 disabled={isUploading || isLoading || !threadId}
               />
+              
               <Button
                 type="submit"
                 size="icon"
-                className="rounded-none h-12"
-                disabled={
-                  !input.trim() || isUploading || isLoading || !threadId
-                }
+                className="rounded-full h-10 w-10 shrink-0 shadow-lg"
+                disabled={!input.trim() || isUploading || isLoading || !threadId}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -358,8 +359,8 @@ export default function Home() {
                   <ArrowUp className="h-4 w-4" />
                 )}
               </Button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </main>

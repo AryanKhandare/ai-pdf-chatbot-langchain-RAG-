@@ -5,6 +5,7 @@
 import { RunnableConfig } from '@langchain/core/runnables';
 import { StateGraph, END, START } from '@langchain/langgraph';
 import fs from 'fs/promises';
+import { createClient } from '@supabase/supabase-js';
 
 import { IndexStateAnnotation } from './state.js';
 import { makeRetriever } from '../shared/retrieval.js';
@@ -38,6 +39,14 @@ async function ingestDocs(
   }
 
   const retriever = await makeRetriever(config);
+
+  // Clear existing documents to ensure the chatbot only answers based on the latest upload
+  const supabaseClient = createClient(
+    process.env.SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  );
+  await supabaseClient.from('documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
   await retriever.addDocuments(docs);
 
   return { docs: 'delete' };

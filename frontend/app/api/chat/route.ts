@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/langgraph-server';
 import { retrievalAssistantStreamConfig } from '@/constants/graphConfigs';
+import { graph as retrievalGraph } from '../../../../backend/src/retrieval_graph/graph';
+import { HumanMessage, AIMessage } from '@langchain/core/messages';
 
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
-    const { message, threadId } = await req.json();
+    const { message, messages } = await req.json();
 
     if (!message) {
       return new NextResponse(
@@ -18,39 +19,17 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!threadId) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Thread ID is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    if (!process.env.LANGGRAPH_RETRIEVAL_ASSISTANT_ID) {
-      return new NextResponse(
-        JSON.stringify({
-          error: 'LANGGRAPH_RETRIEVAL_ASSISTANT_ID is not set',
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-
     try {
-      const assistantId = process.env.LANGGRAPH_RETRIEVAL_ASSISTANT_ID;
-      const serverClient = createServerClient();
+      const formattedMessages = (messages || []).map((m: any) => 
+        m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
+      );
 
-      const stream = await serverClient.client.runs.stream(
-        threadId,
-        assistantId,
+      const stream = await retrievalGraph.stream(
+        { query: message, messages: formattedMessages },
         {
-          input: { query: message },
           streamMode: ['messages', 'updates'],
-          config: {
-            configurable: {
-              ...retrievalAssistantStreamConfig,
-            },
+          configurable: {
+            ...retrievalAssistantStreamConfig,
           },
         },
       );
@@ -62,10 +41,24 @@ export async function POST(req: Request) {
           try {
             // Forward each chunk from the graph to the client
             for await (const chunk of stream) {
-              // Only send relevant chunks
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
-              );
+              const [mode, payload] = chunk;
+              
+              if (mode === 'messages') {
+                const [msgChunk] = payload;
+                if (msgChunk && (msgChunk._getType() === 'ai' || msgChunk.getType?.() === 'ai')) {
+                  const sseEvent = {
+                    event: 'messages/partial',
+                    data: [{ type: 'ai', content: msgChunk.content }]
+                  };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseEvent)}\n\n`));
+                }
+              } else if (mode === 'updates') {
+                const sseEvent = {
+                  event: 'updates',
+                  data: payload
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseEvent)}\n\n`));
+              }
             }
           } catch (error) {
             console.error('Streaming error:', error);

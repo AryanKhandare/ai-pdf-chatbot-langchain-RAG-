@@ -1,23 +1,10 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { initChatModel } from 'langchain/chat_models/universal';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOpenAI } from '@langchain/openai';
 
 const SUPPORTED_PROVIDERS = [
   'openai',
-  'anthropic',
-  'azure_openai',
-  'cohere',
-  'google-vertexai',
-  'google-vertexai-web',
   'google-genai',
-  'ollama',
-  'together',
-  'fireworks',
-  'mistralai',
-  'groq',
-  'bedrock',
-  'cerebras',
-  'deepseek',
-  'xai',
 ] as const;
 /**
  * Load a chat model from a fully specified name.
@@ -30,30 +17,25 @@ export async function loadChatModel(
 ): Promise<BaseChatModel> {
   const index = fullySpecifiedName.indexOf('/');
   if (index === -1) {
-    // If there's no "/", assume it's just the model
-    if (
-      !SUPPORTED_PROVIDERS.includes(
-        fullySpecifiedName as (typeof SUPPORTED_PROVIDERS)[number],
-      )
-    ) {
-      throw new Error(`Unsupported model: ${fullySpecifiedName}`);
-    }
-    return await initChatModel(fullySpecifiedName, {
-      temperature: temperature,
-    });
+    throw new Error(`Unsupported model format. Expected provider/model, got: ${fullySpecifiedName}`);
   } else {
     const provider = fullySpecifiedName.slice(0, index);
     const model = fullySpecifiedName.slice(index + 1);
-    if (
-      !SUPPORTED_PROVIDERS.includes(
-        provider as (typeof SUPPORTED_PROVIDERS)[number],
-      )
-    ) {
-      throw new Error(`Unsupported provider: ${provider}`);
+
+    if (provider === 'google-genai') {
+      return new ChatGoogleGenerativeAI({
+        model: 'gemini-3-flash-preview',
+        apiKey: process.env.GEMINI_API_KEY,
+        streaming: true,
+      });
+    } else if (provider === 'openai') {
+      return new ChatOpenAI({
+        modelName: model,
+        temperature: temperature,
+        apiKey: process.env.OPENAI_API_KEY,
+      });
     }
-    return await initChatModel(model, {
-      modelProvider: provider,
-      temperature: temperature,
-    });
+
+    throw new Error(`Unsupported provider: ${provider}`);
   }
 }

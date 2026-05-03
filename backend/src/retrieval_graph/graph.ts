@@ -35,7 +35,7 @@ async function checkQueryType(
 
   const response = await model
     .withStructuredOutput(schema)
-    .invoke(formattedPrompt.toString());
+    .invoke(formattedPrompt.toChatMessages());
 
   const route = response.route;
 
@@ -98,9 +98,18 @@ async function generateResponse(
   const userHumanMessage = new HumanMessage(state.query);
 
   // Create a human message with the formatted prompt that includes context
-  const formattedPromptMessage = new HumanMessage(formattedPrompt.toString());
+  const formattedPromptMessages = formattedPrompt.toChatMessages();
 
-  const messageHistory = [...state.messages, formattedPromptMessage];
+  // Gemini requires System message to be first. 
+  // We'll separate the system message from the prompt template and put it at the beginning.
+  const systemMessage = formattedPromptMessages.find(m => m._getType() === 'system');
+  const otherMessages = formattedPromptMessages.filter(m => m._getType() !== 'system');
+
+  const messageHistory = [
+    ...(systemMessage ? [systemMessage] : []),
+    ...state.messages,
+    ...otherMessages
+  ];
 
   // Let MessagesAnnotation handle the message history
   const response = await model.invoke(messageHistory);
@@ -115,16 +124,9 @@ const builder = new StateGraph(
 )
   .addNode('retrieveDocuments', retrieveDocuments)
   .addNode('generateResponse', generateResponse)
-  .addNode('checkQueryType', checkQueryType)
-  .addNode('directAnswer', answerQueryDirectly)
-  .addEdge(START, 'checkQueryType')
-  .addConditionalEdges('checkQueryType', routeQuery, [
-    'retrieveDocuments',
-    'directAnswer',
-  ])
+  .addEdge(START, 'retrieveDocuments')
   .addEdge('retrieveDocuments', 'generateResponse')
-  .addEdge('generateResponse', END)
-  .addEdge('directAnswer', END);
+  .addEdge('generateResponse', END);
 
 export const graph = builder.compile().withConfig({
   runName: 'RetrievalGraph',

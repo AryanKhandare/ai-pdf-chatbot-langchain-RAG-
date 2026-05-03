@@ -1,9 +1,10 @@
 // app/api/ingest/route.ts
 import { indexConfig } from '@/constants/graphConfigs';
-import { langGraphServerClient } from '@/lib/langgraph-server';
 import { processPDF } from '@/lib/pdf';
 import { Document } from '@langchain/core/documents';
 import { NextRequest, NextResponse } from 'next/server';
+import { graph as ingestionGraph } from '../../../../backend/src/ingestion_graph/graph';
+import crypto from 'crypto';
 
 // Configuration constants
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -11,16 +12,6 @@ const ALLOWED_FILE_TYPES = ['application/pdf'];
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.LANGGRAPH_INGESTION_ASSISTANT_ID) {
-      return NextResponse.json(
-        {
-          error:
-            'LANGGRAPH_INGESTION_ASSISTANT_ID is not set in your environment variables',
-        },
-        { status: 500 },
-      );
-    }
-
     const formData = await request.formData();
     const files: File[] = [];
 
@@ -78,26 +69,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Run the ingestion graph
-    const thread = await langGraphServerClient.createThread();
-    const ingestionRun = await langGraphServerClient.client.runs.wait(
-      thread.thread_id,
-      'ingestion_graph',
-      {
-        input: {
-          docs: allDocs,
-        },
-        config: {
-          configurable: {
-            ...indexConfig,
-          },
-        },
-      },
+    // Run the ingestion graph directly in process
+    const threadId = crypto.randomUUID();
+    
+    await ingestionGraph.invoke(
+      { docs: allDocs },
+      { configurable: { ...indexConfig } }
     );
 
     return NextResponse.json({
       message: 'Documents ingested successfully',
-      threadId: thread.thread_id,
+      threadId,
     });
   } catch (error: any) {
     console.error('Error processing files:', error);

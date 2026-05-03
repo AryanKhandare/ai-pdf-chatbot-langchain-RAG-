@@ -20,6 +20,15 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    serverComponentsExternalPackages: ['@langchain/langgraph', '@langchain/core', '@langchain/openai', '@langchain/google-genai', 'langsmith', 'pdf-parse', 'chromadb', 'langchain', '@langchain/community'],
+  },
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.mjs': ['.mts', '.mjs'],
+      '.cjs': ['.cts', '.cjs']
+    };
+    return config;
   },
 }
 

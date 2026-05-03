@@ -11,15 +11,20 @@ const ROUTER_SYSTEM_PROMPT = ChatPromptTemplate.fromMessages([
 const RESPONSE_SYSTEM_PROMPT = ChatPromptTemplate.fromMessages([
   [
     'system',
-    `You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
-    If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+    `You are an expert assistant for document analysis. Your goal is to provide a concise and accurate summary of the retrieved context that answers the user's question.
     
-    question:
+    Guidelines:
+    - Provide the answer in a single, well-structured paragraph.
+    - Be professional and direct.
+    - If the answer is not in the context, state that you don't know based on the provided documents.`,
+  ],
+  [
+    'human',
+    `Question:
     {question}
     
-    context:
-    {context}
-    `,
+    Context:
+    {context}`,
   ],
 ]);
 

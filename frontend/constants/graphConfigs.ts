@@ -4,7 +4,7 @@ type StreamConfigurables = AgentConfiguration;
 type IndexConfigurables = IndexConfiguration;
 
 export const retrievalAssistantStreamConfig: StreamConfigurables = {
-  queryModel: 'openai/gpt-4o-mini',
+  queryModel: 'google-genai/gemini-3-flash-preview',
   retrieverProvider: 'supabase',
   k: 5,
 };
