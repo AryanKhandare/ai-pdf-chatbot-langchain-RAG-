@@ -61,7 +61,8 @@ The system consists of:
 - **Frontend**: A Next.js/React app that provides a web UI for users to upload PDFs and chat with the AI.
 ```
 ---
-
+- **Frontend**: A Next.js/React app that provides a web UI for users to upload PDFs and chat with the AI.
+```
 ## Prerequisites
 
 1. **Node.js v18+** (we recommend Node v20).
