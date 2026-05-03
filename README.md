@@ -81,8 +81,8 @@ The system consists of:
 1. **Clone** the repository:
 
    ```bash
-   git clone (https://github.com/AryanKhandare/ai-pdf-chatbot-langchain-RAG-.git)
-   cd ai-pdf-chatbot-langchain-RAG
+	git clone https://github.com/AryanKhandare/ai-pdf-chatbot-langchain-RAG-.git
+	cd ai-pdf-chatbot-langchain-RAG-
    ```
 
 2.	Install dependencies (from the monorepo root):
