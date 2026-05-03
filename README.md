@@ -9,8 +9,7 @@ This template is also an accompanying example to the book [Learning LangChain (O
 > Please do not expect responses to new issues or pull requests.
 
 **Here's what the Chatbot UI looks like:**
-
-<img width="1096" alt="Screenshot 2025-02-20 at 05 39 55" src="https://github.com/user-attachments/assets/3a9ddea7-b718-476b-bdae-38839be20c12" />
+<img width="2757" height="1432" alt="Screenshot 2026-05-03 134457" src="https://github.com/user-attachments/assets/2c46c930-fbdd-46c5-bd98-5e47e7e84762" />
 
 ## Table of Contents
 
@@ -47,19 +46,8 @@ This template is also an accompanying example to the book [Learning LangChain (O
 
 ## Architecture Overview
 
-```ascii
-┌─────────────────────┐    1. Upload PDFs    ┌───────────────────────────┐
-│Frontend (Next.js)   │ ────────────────────> │Backend (LangGraph)       │
-│ - React UI w/ chat  │                      │ - Ingestion Graph         │
-│ - Upload .pdf files │ <────────────────────┤   + Vector embedding via  │
-└─────────────────────┘    2. Confirmation   │     SupabaseVectorStore   │
-(storing embeddings in DB)
+<img width="1691" height="930" alt="RAG PDF reader diagram" src="https://github.com/user-attachments/assets/422a2add-7a9a-4c30-a941-8f7a69c46c35" />
 
-┌─────────────────────┐    3. Ask questions  ┌───────────────────────────┐
-│Frontend (Next.js)   │ ────────────────────> │Backend (LangGraph)       │
-│ - Chat + SSE stream │                      │ - Retrieval Graph         │
-│ - Display sources   │ <────────────────────┤   + Chat model (OpenAI)   │
-└─────────────────────┘ 4. Streamed answers  └───────────────────────────┘
 
 ```
 - **Supabase** is used as the vector store to store and retrieve relevant documents at query time.  
