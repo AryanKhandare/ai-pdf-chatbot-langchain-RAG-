@@ -60,7 +60,7 @@ The system consists of:
   - **Configuration** (`src/shared/configuration.ts`) - handles configuration for the backend api including model providers and vector stores
 - **Frontend**: A Next.js/React app that provides a web UI for users to upload PDFs and chat with the AI.
 ```
----
+
 ```
 ## Prerequisites
 
